@@ -65,6 +65,8 @@ type CodecOption struct {
 	EnableDecimalBinarySpecCompliantEncoding bool
 }
 
+type CodecModifier func(map[string]*Codec)
+
 // Codec supports decoding binary and text Avro data to Go native data types,
 // and conversely encoding Go native data types to binary or text Avro data. A
 // Codec is created as a stateless structure that can be safely used in multiple
@@ -128,13 +130,13 @@ func DefaultCodecOption() *CodecOption {
 //	if err != nil {
 //	        fmt.Println(err)
 //	}
-func NewCodec(schemaSpecification string) (*Codec, error) {
+func NewCodec(schemaSpecification string, modifiers ...CodecModifier) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
 		DefaultCodecOption(),
-	})
+	}, modifiers...)
 }
 
 // NewCodecWithOptions creates a Codec instance with specified Avro schema and codec options.
@@ -243,16 +245,16 @@ func NewCodecForStandardJSONOneWay(schemaSpecification string) (*Codec, error) {
 // to deserialize into the same json structure
 //
 // "Follow your bliss."
-func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
+func NewCodecForStandardJSONFull(schemaSpecification string, modifiers ...CodecModifier) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
 		DefaultCodecOption(),
-	})
+	}, modifiers...)
 }
 
-func NewCodecFrom(schemaSpecification string, cb *codecBuilder) (*Codec, error) {
+func NewCodecFrom(schemaSpecification string, cb *codecBuilder, modifiers ...CodecModifier) (*Codec, error) {
 	var schema interface{}
 
 	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
@@ -261,6 +263,10 @@ func NewCodecFrom(schemaSpecification string, cb *codecBuilder) (*Codec, error) 
 
 	// bootstrap a symbol table with primitive type codecs for the new codec
 	st := newSymbolTable()
+
+	for _, modifier := range modifiers {
+		modifier(st)
+	}
 
 	c, err := buildCodec(st, nullNamespace, schema, cb)
 	if err != nil {
