@@ -65,7 +65,24 @@ type CodecOption struct {
 	EnableDecimalBinarySpecCompliantEncoding bool
 }
 
-type CodecModifier func(map[string]*Codec)
+type CodecCache struct {
+	Codecs map[string]*Codec
+}
+
+func NewCodecCache() *CodecCache {
+	return &CodecCache{
+		Codecs: make(map[string]*Codec),
+	}
+}
+
+func (c *CodecCache) AddCodec(name string, codec *Codec) {
+	c.Codecs[name] = codec
+}
+
+func (c *CodecCache) GetCodec(name string) (*Codec, bool) {
+	codec, ok := c.Codecs[name]
+	return codec, ok
+}
 
 // Codec supports decoding binary and text Avro data to Go native data types,
 // and conversely encoding Go native data types to binary or text Avro data. A
@@ -130,13 +147,13 @@ func DefaultCodecOption() *CodecOption {
 //	if err != nil {
 //	        fmt.Println(err)
 //	}
-func NewCodec(schemaSpecification string, modifiers ...CodecModifier) (*Codec, error) {
+func NewCodec(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
 		DefaultCodecOption(),
-	}, modifiers...)
+	}, nil)
 }
 
 // NewCodecWithOptions creates a Codec instance with specified Avro schema and codec options.
@@ -154,7 +171,7 @@ func NewCodecWithOptions(schemaSpecification string, option *CodecOption) (*Code
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
 		option,
-	})
+	}, nil)
 }
 
 // NewCodecForStandardJSON returns a codec that uses a special union
@@ -205,7 +222,7 @@ func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 		DefaultCodecOption(),
-	})
+	}, nil)
 }
 
 // NewCodecForStandardJSONOneWay is an alias for NewCodecForStandardJSON
@@ -245,16 +262,25 @@ func NewCodecForStandardJSONOneWay(schemaSpecification string) (*Codec, error) {
 // to deserialize into the same json structure
 //
 // "Follow your bliss."
-func NewCodecForStandardJSONFull(schemaSpecification string, modifiers ...CodecModifier) (*Codec, error) {
+func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
 		DefaultCodecOption(),
-	}, modifiers...)
+	}, nil)
 }
 
-func NewCodecFrom(schemaSpecification string, cb *codecBuilder, modifiers ...CodecModifier) (*Codec, error) {
+func NewCodecForStandardJSONFullWithCache(schemaSpecification string, cache *CodecCache) (*Codec, error) {
+	return NewCodecFrom(schemaSpecification, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceTwoWayJSON,
+		DefaultCodecOption(),
+	}, cache)
+}
+
+func NewCodecFrom(schemaSpecification string, cb *codecBuilder, cache *CodecCache) (*Codec, error) {
 	var schema interface{}
 
 	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
@@ -264,8 +290,10 @@ func NewCodecFrom(schemaSpecification string, cb *codecBuilder, modifiers ...Cod
 	// bootstrap a symbol table with primitive type codecs for the new codec
 	st := newSymbolTable()
 
-	for _, modifier := range modifiers {
-		modifier(st)
+	if cache != nil {
+		for name, codec := range cache.Codecs {
+			st[name] = codec
+		}
 	}
 
 	c, err := buildCodec(st, nullNamespace, schema, cb)

@@ -234,7 +234,7 @@ func ExampleCodec_TextualFromNative() {
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
 		DefaultCodecOption(),
-	})
+	}, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -253,7 +253,7 @@ func ExampleCodec_TextualFromNative_json() {
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 		DefaultCodecOption(),
-	})
+	}, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -271,7 +271,7 @@ func ExampleCodec_NativeFromTextual_json() {
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 		DefaultCodecOption(),
-	})
+	}, nil)
 	if err != nil {
 		fmt.Println(err)
 	}

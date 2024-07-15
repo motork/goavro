@@ -73,7 +73,7 @@ func testJSONDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 		DefaultCodecOption(),
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
@@ -86,7 +86,7 @@ func testNativeToTextualJSONPass(t *testing.T, schema string, datum interface{},
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
 		DefaultCodecOption(),
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
